@@ -1,0 +1,13 @@
+name = "CTM: Aero"
+author = "CTM Staff"
+version = "0.0.3"
+pack-format = "packwiz:1.1.0"
+
+[index]
+file = "index.toml"
+hash-format = "sha256"
+hash = "6c7aa1aa3e236e3c849b2fcbce00c44547154e2d23fb32017b522637f08e610d"
+
+[versions]
+minecraft = "1.21.1"
+neoforge = "21.1.227"
