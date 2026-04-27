@@ -1,0 +1,87 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: pack
+        name: Read pack.toml
+        run: |
+          ver=$(grep -E '^version\s*=' pack/pack.toml | sed -E 's/^version\s*=\s*"([^"]+)".*/\1/')
+          base="${{ github.event.repository.name }}"
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "client_zip=${base}-client-${ver}.zip" >> "$GITHUB_OUTPUT"
+          echo "server_zip=${base}-server-${ver}.zip" >> "$GITHUB_OUTPUT"
+
+      - name: Verify tag matches pack.toml version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag_ver="${GITHUB_REF#refs/tags/v}"
+          pack_ver="${{ steps.pack.outputs.version }}"
+          if [ "$tag_ver" != "$pack_ver" ]; then
+            echo "::warning::Tag v${tag_ver} does not match pack.toml version ${pack_ver}"
+          fi
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Install packwiz
+        run: go install github.com/packwiz/packwiz@latest
+
+      - name: Install moddl
+        run: install -m 0755 .github/moddl /usr/local/bin/moddl
+
+      - name: Build client zip
+        working-directory: pack
+        run: packwiz curseforge export -s client -o "../${{ steps.pack.outputs.client_zip }}"
+
+      - name: Build server zip
+        env:
+          CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
+        run: |
+          (cd pack && packwiz curseforge export -s server -o /tmp/server-cf.zip)
+          mkdir -p /tmp/server-cf-extracted
+          unzip -q /tmp/server-cf.zip -d /tmp/server-cf-extracted
+
+          mkdir -p server-build/mods
+          moddl /tmp/server-cf-extracted/manifest.json server-build/mods
+
+          if [ -d /tmp/server-cf-extracted/overrides ]; then
+            cp -a /tmp/server-cf-extracted/overrides/. server-build/
+          fi
+
+          (cd server-build && zip -qr "../${{ steps.pack.outputs.server_zip }}" .)
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.pack.outputs.base }}-${{ steps.pack.outputs.version }}-${{ github.sha }}
+          path: |
+            ${{ steps.pack.outputs.client_zip }}
+            ${{ steps.pack.outputs.server_zip }}
+
+      - name: Create or update release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          client="${{ steps.pack.outputs.client_zip }}"
+          server="${{ steps.pack.outputs.server_zip }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$client" "$server" --clobber
+          else
+            gh release create "$tag" "$client" "$server" --generate-notes --title "$tag"
+          fi

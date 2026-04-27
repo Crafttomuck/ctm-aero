@@ -1,10 +1,6 @@
 hash-format = "sha256"
 
 [[files]]
-file = ".claude/settings.local.json"
-hash = "5e60dc5814c709fca2dd80e39915c4991c12ea27dc9468e94984e03a27a51b1d"
-
-[[files]]
 file = "icon.png"
 hash = "247dfe5bf4e6c33acadbc90e91a28d74ea25f0c1471264de2ddc0ca1a6ee7bbd"
 
