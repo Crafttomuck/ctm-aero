@@ -1,12 +1,12 @@
 name = "CTM: Aero"
 author = "CTM Staff"
-version = "0.0.3"
+version = "0.0.4"
 pack-format = "packwiz:1.1.0"
 
 [index]
 file = "index.toml"
 hash-format = "sha256"
-hash = "36fbf599a5b00a4cb79a180b6d3c85624a3ffda45088329d9324014efeae469f"
+hash = "ec41f8a111b288d6b11ef24df03af64480bf685971d1eab2e904d0b045496c00"
 
 [versions]
 minecraft = "1.21.1"
